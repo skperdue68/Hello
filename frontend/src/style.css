@@ -1,28 +1,111 @@
 html, body {
   margin: 0;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   font-family: Arial, sans-serif;
   background: #1e1e1e;
   color: white;
 }
 
-#app {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button.danger {
+  background: #b83232;
+  color: white;
 }
 
 main {
-  padding: 2rem;
+  padding: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-h1 {
-  font-size: 2.5rem;
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
-p {
+.header h1 {
+  margin: 0;
+}
+
+.header p {
+  margin: 0.4rem 0 0;
   opacity: 0.8;
+}
+
+.panel {
+  background: #2b2b2b;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.watch-list,
+.hash-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.watch-row,
+.log-line {
+  background: #1f1f1f;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 0.85rem;
+}
+
+.watch-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.watch-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.watch-info span,
+.log-line span {
+  opacity: 0.8;
+  word-break: break-all;
+}
+
+.watch-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: start;
+  flex-shrink: 0;
+}
+
+code {
+  display: block;
+  color: #a8e6ff;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.empty {
+  opacity: 0.7;
 }
