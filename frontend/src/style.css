@@ -67,11 +67,18 @@ main {
   margin-top: 0;
 }
 
-.api-key-row {
+.api-key-row,
+.tray-row {
   display: flex;
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.tray-row label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .ok {

@@ -1,4 +1,4 @@
-ccountSettings_SV =
+AccountSettings_SV =
 {
     ["Default"] = 
     {

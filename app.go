@@ -19,7 +19,16 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-const apiBaseURL = "http://localhost:3001"
+const syncHost = "192.168.5.88"
+const apiPort = "3001"
+
+func getSyncHost() string {
+	return syncHost
+}
+
+func getAPIBaseURL() string {
+	return fmt.Sprintf("http://%s:%s", getSyncHost(), apiPort)
+}
 
 type WatchEntry struct {
 	ID             int    `json:"id"`
@@ -39,7 +48,8 @@ type SavedWatchEntry struct {
 }
 
 type AppSettings struct {
-	APIKey string `json:"apiKey"`
+	APIKey             string `json:"apiKey"`
+	RunInTrayOnStartup bool   `json:"runInTrayOnStartup"`
 }
 
 type HashEvent struct {
@@ -75,6 +85,41 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.loadSettings()
 	a.loadSavedWatches()
+}
+
+func (a *App) GetAPIBaseURL() string {
+	return getAPIBaseURL()
+}
+
+func (a *App) GetSocketURL() string {
+	return getAPIBaseURL()
+}
+
+func (a *App) GetRunInTrayOnStartup() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.settings.RunInTrayOnStartup
+}
+
+func (a *App) SetRunInTrayOnStartup(enabled bool) error {
+	a.mu.Lock()
+	a.settings.RunInTrayOnStartup = enabled
+	a.mu.Unlock()
+
+	a.saveSettings()
+	return nil
+}
+
+func (a *App) HideToTray() {
+	runtime.WindowHide(a.ctx)
+}
+
+func (a *App) ShowFromTray() {
+	runtime.WindowShow(a.ctx)
+}
+
+func (a *App) QuitApp() {
+	runtime.Quit(a.ctx)
 }
 
 func (a *App) GetAPIKey() string {
@@ -531,6 +576,10 @@ func (a *App) refreshRemoteInfo() {
 	}
 }
 
+type remoteChangeLogResponse struct {
+	Entries []uploadResponse `json:"entries"`
+}
+
 type remoteFileInfoResponse struct {
 	Exists         bool   `json:"exists"`
 	FileName       string `json:"fileName"`
@@ -558,7 +607,7 @@ func validateAPIKey(apiKey string) (string, error) {
 		return "", nil
 	}
 
-	req, err := http.NewRequest("GET", apiBaseURL+"/api/validate-key", nil)
+	req, err := http.NewRequest("GET", getAPIBaseURL()+"/api/validate-key", nil)
 	if err != nil {
 		return "", err
 	}
@@ -586,7 +635,7 @@ func validateAPIKey(apiKey string) (string, error) {
 }
 
 func getRemoteFileInfo(fileName string) (remoteFileInfoResponse, error) {
-	url := fmt.Sprintf("%s/api/file-info/%s", apiBaseURL, fileName)
+	url := fmt.Sprintf("%s/api/file-info/%s", getAPIBaseURL(), fileName)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 
@@ -606,6 +655,25 @@ func getRemoteFileInfo(fileName string) (remoteFileInfoResponse, error) {
 	}
 
 	return result, nil
+}
+
+func (a *App) GetRemoteChangeLog() []uploadResponse {
+	url := getAPIBaseURL() + "/api/change-log"
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return []uploadResponse{}
+	}
+	defer resp.Body.Close()
+
+	var result remoteChangeLogResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return []uploadResponse{}
+	}
+
+	return result.Entries
 }
 
 func uploadFile(filePath string, apiKey string) (uploadResponse, error) {
@@ -635,7 +703,7 @@ func uploadFile(filePath string, apiKey string) (uploadResponse, error) {
 		return uploadResponse{}, err
 	}
 
-	req, err := http.NewRequest("POST", apiBaseURL+"/api/upload", &body)
+	req, err := http.NewRequest("POST", getAPIBaseURL()+"/api/upload", &body)
 	if err != nil {
 		return uploadResponse{}, err
 	}

@@ -4,9 +4,21 @@ import {main} from '../models';
 
 export function AddFile(arg1:string):Promise<main.WatchEntry>;
 
+export function GetAPIBaseURL():Promise<string>;
+
 export function GetAPIKey():Promise<string>;
 
+export function GetRemoteChangeLog():Promise<Array<main.uploadResponse>>;
+
+export function GetRunInTrayOnStartup():Promise<boolean>;
+
+export function GetSocketURL():Promise<string>;
+
 export function GetWatches():Promise<Array<main.WatchEntry>>;
+
+export function HideToTray():Promise<void>;
+
+export function QuitApp():Promise<void>;
 
 export function RemoveWatch(arg1:number):Promise<void>;
 
@@ -15,3 +27,7 @@ export function SaveAPIKey(arg1:string):Promise<void>;
 export function SelectAndAddFile():Promise<main.WatchEntry>;
 
 export function SetEnabled(arg1:number,arg2:boolean):Promise<void>;
+
+export function SetRunInTrayOnStartup(arg1:boolean):Promise<void>;
+
+export function ShowFromTray():Promise<void>;

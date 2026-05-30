@@ -6,12 +6,36 @@ export function AddFile(arg1) {
   return window['go']['main']['App']['AddFile'](arg1);
 }
 
+export function GetAPIBaseURL() {
+  return window['go']['main']['App']['GetAPIBaseURL']();
+}
+
 export function GetAPIKey() {
   return window['go']['main']['App']['GetAPIKey']();
 }
 
+export function GetRemoteChangeLog() {
+  return window['go']['main']['App']['GetRemoteChangeLog']();
+}
+
+export function GetRunInTrayOnStartup() {
+  return window['go']['main']['App']['GetRunInTrayOnStartup']();
+}
+
+export function GetSocketURL() {
+  return window['go']['main']['App']['GetSocketURL']();
+}
+
 export function GetWatches() {
   return window['go']['main']['App']['GetWatches']();
+}
+
+export function HideToTray() {
+  return window['go']['main']['App']['HideToTray']();
+}
+
+export function QuitApp() {
+  return window['go']['main']['App']['QuitApp']();
 }
 
 export function RemoveWatch(arg1) {
@@ -28,4 +52,12 @@ export function SelectAndAddFile() {
 
 export function SetEnabled(arg1, arg2) {
   return window['go']['main']['App']['SetEnabled'](arg1, arg2);
+}
+
+export function SetRunInTrayOnStartup(arg1) {
+  return window['go']['main']['App']['SetRunInTrayOnStartup'](arg1);
+}
+
+export function ShowFromTray() {
+  return window['go']['main']['App']['ShowFromTray']();
 }

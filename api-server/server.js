@@ -8,10 +8,14 @@ const path = require('path');
 const { Server } = require('socket.io');
 
 const PORT = 3001;
+const SYNC_HOST = '192.168.5.88';
 
 const STORAGE_DIR = path.join(__dirname, 'remote-files');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const DATA_DIR = path.join(__dirname, 'data');
+
+const CHANGE_LOG_FILE = path.join(DATA_DIR, 'change-log.json');
+const MAX_CHANGE_LOG_ENTRIES = 30;
 
 const API_KEYS_FILE = path.join(DATA_DIR, 'api-keys.json');
 const METADATA_FILE = path.join(DATA_DIR, 'file-metadata.json');
@@ -60,6 +64,27 @@ function loadMetadata() {
 
 function saveMetadata(metadata) {
   saveJson(METADATA_FILE, metadata);
+}
+
+function loadChangeLog() {
+  return loadJson(CHANGE_LOG_FILE, []);
+}
+
+function saveChangeLog(entries) {
+  saveJson(CHANGE_LOG_FILE, entries.slice(0, MAX_CHANGE_LOG_ENTRIES));
+}
+
+function addChangeLogEntry(entry) {
+  const entries = loadChangeLog();
+
+  entries.unshift({
+    fileName: entry.fileName,
+    sha256: entry.sha256,
+    lastUploadedBy: entry.lastUploadedBy,
+    lastUploadedAt: entry.lastUploadedAt
+  });
+
+  saveChangeLog(entries);
 }
 
 function safeFileName(fileName) {
@@ -134,6 +159,13 @@ app.get('/api/file-info/:fileName', async (req, res) => {
   }
 });
 
+app.get('/api/change-log', (req, res) => {
+  const entries = loadChangeLog();
+  res.json({
+    entries
+  });
+});
+
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     const apiKey = req.header('x-api-key') || '';
@@ -174,6 +206,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       lastUploadedBy: owner,
       lastUploadedAt
     };
+
+    addChangeLogEntry(payload);
 
     io.emit('remote-file-updated', payload);
 
@@ -283,7 +317,8 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-server.listen(PORT, () => {
-  console.log(`API server running on http://localhost:${PORT}`);
-  console.log(`Admin page: http://localhost:${PORT}/admin`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`API server listening on http://0.0.0.0:${PORT}`);
+  console.log(`Using configured hostname/IP: http://${SYNC_HOST}:${PORT}`);
+  console.log(`Admin page: http://${SYNC_HOST}:${PORT}/admin`);
 });

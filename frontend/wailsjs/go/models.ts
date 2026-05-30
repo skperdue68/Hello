@@ -28,6 +28,28 @@ export namespace main {
 	        this.lastUploadedAt = source["lastUploadedAt"];
 	    }
 	}
+	export class uploadResponse {
+	    success: boolean;
+	    fileName: string;
+	    sha256: string;
+	    lastUploadedBy: string;
+	    lastUploadedAt: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new uploadResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.fileName = source["fileName"];
+	        this.sha256 = source["sha256"];
+	        this.lastUploadedBy = source["lastUploadedBy"];
+	        this.lastUploadedAt = source["lastUploadedAt"];
+	        this.error = source["error"];
+	    }
+	}
 
 }
 

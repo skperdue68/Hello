@@ -6,7 +6,13 @@ import {
   SetEnabled,
   RemoveWatch,
   GetAPIKey,
-  SaveAPIKey
+  SaveAPIKey,
+  GetSocketURL,
+  GetRemoteChangeLog,
+  GetRunInTrayOnStartup,
+  SetRunInTrayOnStartup,
+  HideToTray,
+  QuitApp
 } from '../wailsjs/go/main/App';
 
 import { EventsOn } from '../wailsjs/runtime/runtime';
@@ -16,31 +22,35 @@ const app = document.querySelector('#app');
 
 let watches = [];
 let logLines = [];
+let socket = null;
 
-const socket = io('http://localhost:3001');
+async function connectSocket() {
+  const socketURL = await GetSocketURL();
+  socket = io(socketURL);
 
-socket.on('connect', () => {
-  console.log('Connected to API websocket');
-});
-
-socket.on('remote-file-updated', (payload) => {
-  for (const watch of watches) {
-    if (watch.fileName === payload.fileName) {
-      watch.remoteHash = payload.sha256;
-      watch.lastUploadedBy = payload.lastUploadedBy;
-      watch.lastUploadedAt = payload.lastUploadedAt;
-    }
-  }
-
-  logLines.unshift({
-    timestamp: new Date().toLocaleString(),
-    path: `REMOTE: ${payload.fileName}`,
-    hash: `Remote Updated: ${payload.sha256} by ${payload.lastUploadedBy} at ${formatDate(payload.lastUploadedAt)}`
+  socket.on('connect', () => {
+    console.log(`Connected to API websocket: ${socketURL}`);
   });
 
-  renderWatches();
-  renderLog();
-});
+  socket.on('remote-file-updated', (payload) => {
+    for (const watch of watches) {
+      if (watch.fileName === payload.fileName) {
+        watch.remoteHash = payload.sha256;
+        watch.lastUploadedBy = payload.lastUploadedBy;
+        watch.lastUploadedAt = payload.lastUploadedAt;
+      }
+    }
+
+    logLines.unshift({
+      timestamp: new Date().toLocaleString(),
+      path: `REMOTE: ${payload.fileName}`,
+      hash: `Remote Updated: ${payload.sha256} by ${payload.lastUploadedBy} at ${formatDate(payload.lastUploadedAt)}`
+    });
+
+    renderWatches();
+    renderLog();
+  });
+}
 
 app.innerHTML = `
   <main>
@@ -62,6 +72,18 @@ app.innerHTML = `
     </section>
 
     <section class="panel">
+      <h2>Startup / Tray</h2>
+      <div class="tray-row">
+        <label>
+          <input id="runInTrayCheckbox" type="checkbox">
+          Start hidden when the application opens
+        </label>
+        <button id="hideToTrayButton">Hide Window</button>
+        <button id="quitButton" class="danger">Quit</button>
+      </div>
+    </section>
+
+    <section class="panel">
       <h2>Watched Files</h2>
       <div id="watchList" class="watch-list"></div>
     </section>
@@ -77,6 +99,9 @@ const addFileButton = document.querySelector('#addFileButton');
 const apiKeyInput = document.querySelector('#apiKeyInput');
 const saveApiKeyButton = document.querySelector('#saveApiKeyButton');
 const apiKeyStatus = document.querySelector('#apiKeyStatus');
+const runInTrayCheckbox = document.querySelector('#runInTrayCheckbox');
+const hideToTrayButton = document.querySelector('#hideToTrayButton');
+const quitButton = document.querySelector('#quitButton');
 const watchList = document.querySelector('#watchList');
 const hashLog = document.querySelector('#hashLog');
 
@@ -97,6 +122,18 @@ saveApiKeyButton.addEventListener('click', async () => {
     apiKeyStatus.textContent = String(err);
     apiKeyStatus.className = 'bad';
   }
+});
+
+runInTrayCheckbox.addEventListener('change', async () => {
+  await SetRunInTrayOnStartup(runInTrayCheckbox.checked);
+});
+
+hideToTrayButton.addEventListener('click', async () => {
+  await HideToTray();
+});
+
+quitButton.addEventListener('click', async () => {
+  await QuitApp();
 });
 
 EventsOn('hash-changed', (event) => {
@@ -148,7 +185,13 @@ EventsOn('watch-error', (message) => {
 });
 
 async function loadInitialData() {
+  await connectSocket();
+
   apiKeyInput.value = await GetAPIKey();
+  runInTrayCheckbox.checked = await GetRunInTrayOnStartup();
+
+  await loadRemoteChangeLog();
+
   watches = await GetWatches();
 
   if (apiKeyInput.value) {
@@ -237,6 +280,16 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+async function loadRemoteChangeLog() {
+  const entries = await GetRemoteChangeLog();
+
+  logLines = entries.map((entry) => ({
+    timestamp: formatDate(entry.lastUploadedAt),
+    path: `REMOTE: ${entry.fileName}`,
+    hash: `Remote Updated: ${entry.sha256} by ${entry.lastUploadedBy} at ${formatDate(entry.lastUploadedAt)}`
+  }));
 }
 
 function escapeHtml(value) {
