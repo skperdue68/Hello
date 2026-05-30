@@ -157,6 +157,38 @@ code {
   color: white;
 }
 
+.change-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.change-log-table th,
+.change-log-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #444;
+}
+
+.change-log-table th {
+  background: #111;
+  color: white;
+  font-weight: 700;
+}
+
+.change-log-table tbody tr:nth-child(even) {
+  background: #262626;
+}
+
+.change-log-table tbody tr:nth-child(odd) {
+  background: #1f1f1f;
+}
+
+.change-log-table td {
+  word-break: break-word;
+}
+
 .empty {
   opacity: 0.7;
 }

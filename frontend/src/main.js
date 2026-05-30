@@ -8,11 +8,11 @@ import {
   GetAPIKey,
   SaveAPIKey,
   GetSocketURL,
-  GetRemoteChangeLog,
   GetRunInTrayOnStartup,
   SetRunInTrayOnStartup,
   HideToTray,
-  QuitApp
+  QuitApp,
+  GetRemoteChangeLog
 } from '../wailsjs/go/main/App';
 
 import { EventsOn } from '../wailsjs/runtime/runtime';
@@ -26,10 +26,22 @@ let socket = null;
 
 async function connectSocket() {
   const socketURL = await GetSocketURL();
-  socket = io(socketURL);
+  console.log(`Trying socket connection to: ${socketURL}`);
+
+  socket = io(socketURL, {
+    transports: ['websocket', 'polling']
+  });
 
   socket.on('connect', () => {
     console.log(`Connected to API websocket: ${socketURL}`);
+  });
+
+  socket.on('connect_error', (err) => {
+    console.error('Socket connection error:', err.message);
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log('Socket disconnected:', reason);
   });
 
   socket.on('remote-file-updated', (payload) => {
@@ -42,9 +54,10 @@ async function connectSocket() {
     }
 
     logLines.unshift({
-      timestamp: new Date().toLocaleString(),
-      path: `REMOTE: ${payload.fileName}`,
-      hash: `Remote Updated: ${payload.sha256} by ${payload.lastUploadedBy} at ${formatDate(payload.lastUploadedAt)}`
+      timestamp: formatDate(payload.lastUploadedAt),
+      updatedBy: payload.lastUploadedBy || 'Unknown',
+      guildName: payload.guildName || payload.fileName || 'Unknown',
+      sha256: payload.sha256
     });
 
     renderWatches();
@@ -137,12 +150,6 @@ quitButton.addEventListener('click', async () => {
 });
 
 EventsOn('hash-changed', (event) => {
-  logLines.unshift({
-    timestamp: event.timestamp,
-    path: event.path,
-    hash: `Local: ${event.hash} | Remote Before Upload: ${event.remoteHash || 'none'}`
-  });
-
   const watch = watches.find((item) => item.id === event.id);
   if (watch) {
     watch.lastHash = event.hash;
@@ -152,7 +159,6 @@ EventsOn('hash-changed', (event) => {
   }
 
   renderWatches();
-  renderLog();
 });
 
 EventsOn('remote-file-updated', (event) => {
@@ -165,9 +171,10 @@ EventsOn('remote-file-updated', (event) => {
   }
 
   logLines.unshift({
-    timestamp: new Date().toLocaleString(),
-    path: `UPLOAD: ${event.fileName}`,
-    hash: `Remote Updated: ${event.sha256} by ${event.lastUploadedBy} at ${formatDate(event.lastUploadedAt)}`
+    timestamp: formatDate(event.lastUploadedAt),
+    updatedBy: event.lastUploadedBy || 'Unknown',
+    guildName: event.guildName || event.fileName || 'Unknown',
+    sha256: event.sha256
   });
 
   renderWatches();
@@ -177,8 +184,9 @@ EventsOn('remote-file-updated', (event) => {
 EventsOn('watch-error', (message) => {
   logLines.unshift({
     timestamp: new Date().toLocaleString(),
-    path: 'ERROR',
-    hash: message
+    updatedBy: 'ERROR',
+    guildName: message,
+    sha256: ''
   });
 
   renderLog();
@@ -201,6 +209,17 @@ async function loadInitialData() {
 
   renderWatches();
   renderLog();
+}
+
+async function loadRemoteChangeLog() {
+  const entries = await GetRemoteChangeLog();
+
+  logLines = entries.map((entry) => ({
+    timestamp: formatDate(entry.lastUploadedAt),
+    updatedBy: entry.lastUploadedBy || 'Unknown',
+    guildName: entry.guildName || entry.fileName || 'Unknown',
+    sha256: entry.sha256
+  }));
 }
 
 function renderWatches() {
@@ -260,15 +279,26 @@ function renderLog() {
     return;
   }
 
-  hashLog.innerHTML = logLines.map((line) => `
-    <div class="log-line">
-      <div>
-        <strong>${escapeHtml(line.timestamp)}</strong>
-        <span>${escapeHtml(line.path)}</span>
-      </div>
-      <code>${escapeHtml(line.hash)}</code>
-    </div>
-  `).join('');
+  hashLog.innerHTML = `
+    <table class="change-log-table">
+      <thead>
+        <tr>
+          <th>Date/Time</th>
+          <th>Updated By</th>
+          <th>Guildname</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${logLines.map((line) => `
+          <tr>
+            <td>${escapeHtml(line.timestamp || '')}</td>
+            <td>${escapeHtml(line.updatedBy || 'Unknown')}</td>
+            <td>${escapeHtml(line.guildName || line.path || 'Unknown')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 function fileName(path) {
@@ -280,16 +310,6 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
-}
-
-async function loadRemoteChangeLog() {
-  const entries = await GetRemoteChangeLog();
-
-  logLines = entries.map((entry) => ({
-    timestamp: formatDate(entry.lastUploadedAt),
-    path: `REMOTE: ${entry.fileName}`,
-    hash: `Remote Updated: ${entry.sha256} by ${entry.lastUploadedBy} at ${formatDate(entry.lastUploadedAt)}`
-  }));
 }
 
 function escapeHtml(value) {
