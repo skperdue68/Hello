@@ -9,5 +9,11 @@
   "author": {
     "name": "Stephanie Perdue",
     "email": "skperdue68@gmail.com"
+  },
+    "info": {
+    "productName": "Hello File Watcher",
+    "productVersion": "1.0.0",
+    "copyright": "",
+    "comments": ""
   }
 }
