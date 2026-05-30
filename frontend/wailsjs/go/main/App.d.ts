@@ -4,9 +4,13 @@ import {main} from '../models';
 
 export function AddFile(arg1:string):Promise<main.WatchEntry>;
 
+export function GetAPIKey():Promise<string>;
+
 export function GetWatches():Promise<Array<main.WatchEntry>>;
 
 export function RemoveWatch(arg1:number):Promise<void>;
+
+export function SaveAPIKey(arg1:string):Promise<void>;
 
 export function SelectAndAddFile():Promise<main.WatchEntry>;
 

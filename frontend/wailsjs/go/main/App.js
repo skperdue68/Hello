@@ -6,12 +6,20 @@ export function AddFile(arg1) {
   return window['go']['main']['App']['AddFile'](arg1);
 }
 
+export function GetAPIKey() {
+  return window['go']['main']['App']['GetAPIKey']();
+}
+
 export function GetWatches() {
   return window['go']['main']['App']['GetWatches']();
 }
 
 export function RemoveWatch(arg1) {
   return window['go']['main']['App']['RemoveWatch'](arg1);
+}
+
+export function SaveAPIKey(arg1) {
+  return window['go']['main']['App']['SaveAPIKey'](arg1);
 }
 
 export function SelectAndAddFile() {

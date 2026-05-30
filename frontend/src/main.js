@@ -4,24 +4,61 @@ import {
   SelectAndAddFile,
   GetWatches,
   SetEnabled,
-  RemoveWatch
+  RemoveWatch,
+  GetAPIKey,
+  SaveAPIKey
 } from '../wailsjs/go/main/App';
 
 import { EventsOn } from '../wailsjs/runtime/runtime';
+import { io } from 'socket.io-client';
 
 const app = document.querySelector('#app');
 
 let watches = [];
 let logLines = [];
 
+const socket = io('http://localhost:3001');
+
+socket.on('connect', () => {
+  console.log('Connected to API websocket');
+});
+
+socket.on('remote-file-updated', (payload) => {
+  for (const watch of watches) {
+    if (watch.fileName === payload.fileName) {
+      watch.remoteHash = payload.sha256;
+      watch.lastUploadedBy = payload.lastUploadedBy;
+      watch.lastUploadedAt = payload.lastUploadedAt;
+    }
+  }
+
+  logLines.unshift({
+    timestamp: new Date().toLocaleString(),
+    path: `REMOTE: ${payload.fileName}`,
+    hash: `Remote Updated: ${payload.sha256} by ${payload.lastUploadedBy} at ${formatDate(payload.lastUploadedAt)}`
+  });
+
+  renderWatches();
+  renderLog();
+});
+
 app.innerHTML = `
   <main>
     <section class="header">
       <div>
         <h1>Hello File Watcher</h1>
-        <p>Watch files and log SHA-256 changes.</p>
+        <p>Watch files, compare SHA-256 values, and upload changed files.</p>
       </div>
       <button id="addFileButton">Add File</button>
+    </section>
+
+    <section class="panel">
+      <h2>API Key</h2>
+      <div class="api-key-row">
+        <input id="apiKeyInput" type="password" placeholder="Enter API key">
+        <button id="saveApiKeyButton">Save API Key</button>
+        <span id="apiKeyStatus"></span>
+      </div>
     </section>
 
     <section class="panel">
@@ -37,6 +74,9 @@ app.innerHTML = `
 `;
 
 const addFileButton = document.querySelector('#addFileButton');
+const apiKeyInput = document.querySelector('#apiKeyInput');
+const saveApiKeyButton = document.querySelector('#saveApiKeyButton');
+const apiKeyStatus = document.querySelector('#apiKeyStatus');
 const watchList = document.querySelector('#watchList');
 const hashLog = document.querySelector('#hashLog');
 
@@ -48,13 +88,50 @@ addFileButton.addEventListener('click', async () => {
   }
 });
 
+saveApiKeyButton.addEventListener('click', async () => {
+  try {
+    await SaveAPIKey(apiKeyInput.value.trim());
+    apiKeyStatus.textContent = 'API key saved.';
+    apiKeyStatus.className = 'ok';
+  } catch (err) {
+    apiKeyStatus.textContent = String(err);
+    apiKeyStatus.className = 'bad';
+  }
+});
+
 EventsOn('hash-changed', (event) => {
-  logLines.unshift(event);
+  logLines.unshift({
+    timestamp: event.timestamp,
+    path: event.path,
+    hash: `Local: ${event.hash} | Remote Before Upload: ${event.remoteHash || 'none'}`
+  });
 
   const watch = watches.find((item) => item.id === event.id);
   if (watch) {
     watch.lastHash = event.hash;
+    watch.remoteHash = event.remoteHash;
+    watch.lastUploadedBy = event.lastUploadedBy;
+    watch.lastUploadedAt = event.lastUploadedAt;
   }
+
+  renderWatches();
+  renderLog();
+});
+
+EventsOn('remote-file-updated', (event) => {
+  for (const watch of watches) {
+    if (watch.fileName === event.fileName) {
+      watch.remoteHash = event.sha256;
+      watch.lastUploadedBy = event.lastUploadedBy;
+      watch.lastUploadedAt = event.lastUploadedAt;
+    }
+  }
+
+  logLines.unshift({
+    timestamp: new Date().toLocaleString(),
+    path: `UPLOAD: ${event.fileName}`,
+    hash: `Remote Updated: ${event.sha256} by ${event.lastUploadedBy} at ${formatDate(event.lastUploadedAt)}`
+  });
 
   renderWatches();
   renderLog();
@@ -70,9 +147,17 @@ EventsOn('watch-error', (message) => {
   renderLog();
 });
 
-async function loadWatches() {
+async function loadInitialData() {
+  apiKeyInput.value = await GetAPIKey();
   watches = await GetWatches();
+
+  if (apiKeyInput.value) {
+    apiKeyStatus.textContent = 'API key loaded.';
+    apiKeyStatus.className = 'ok';
+  }
+
   renderWatches();
+  renderLog();
 }
 
 function renderWatches() {
@@ -86,7 +171,13 @@ function renderWatches() {
       <div class="watch-info">
         <strong>${escapeHtml(fileName(item.path))}</strong>
         <span>${escapeHtml(item.path)}</span>
-        <code>${escapeHtml(item.lastHash || 'No hash yet')}</code>
+        <code>Local: ${escapeHtml(item.lastHash || 'No local hash yet')}</code>
+        <code>Remote: ${escapeHtml(item.remoteHash || 'No remote hash yet')}</code>
+        <span>Last uploaded by: <strong>${escapeHtml(item.lastUploadedBy || 'Unknown')}</strong></span>
+        <span>Last uploaded at: <strong>${escapeHtml(formatDate(item.lastUploadedAt) || 'Unknown')}</strong></span>
+        <span class="status ${item.enabled ? 'on' : 'off'}">
+          ${item.enabled ? 'Watching' : 'Off'}
+        </span>
       </div>
 
       <div class="watch-actions">
@@ -141,6 +232,13 @@ function fileName(path) {
   return path.split(/[\\/]/).pop();
 }
 
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -150,5 +248,4 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-loadWatches();
-renderLog();
+loadInitialData();

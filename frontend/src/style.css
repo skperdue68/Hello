@@ -24,6 +24,15 @@ button.danger {
   color: white;
 }
 
+input {
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 0.65rem;
+  background: #111;
+  color: white;
+  min-width: 320px;
+}
+
 main {
   padding: 1.5rem;
   max-width: 1100px;
@@ -56,6 +65,23 @@ main {
 
 .panel h2 {
   margin-top: 0;
+}
+
+.api-key-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ok {
+  color: #75e39c;
+  font-weight: 700;
+}
+
+.bad {
+  color: #ff8a8a;
+  font-weight: 700;
 }
 
 .watch-list,
@@ -104,6 +130,24 @@ code {
   color: #a8e6ff;
   word-break: break-all;
   white-space: pre-wrap;
+}
+
+.status {
+  width: fit-content;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.status.on {
+  background: #1f6f43;
+  color: white;
+}
+
+.status.off {
+  background: #666;
+  color: white;
 }
 
 .empty {
