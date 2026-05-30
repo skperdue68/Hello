@@ -1,53 +1,79 @@
 name: Build Wails App
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+push:
+branches:
+- main
+pull_request:
+branches:
+- main
+workflow_dispatch:
 
 jobs:
-  build:
-    name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+build:
+name: Build ${{ matrix.os }}
+runs-on: ${{ matrix.os }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest
-          - macos-latest
+```
+strategy:
+  fail-fast: false
+  matrix:
+    os:
+      - windows-latest
+      - ubuntu-latest
+      - macos-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+steps:
+  - name: Checkout source
+    uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
+  - name: Setup Go
+    uses: actions/setup-go@v5
+    with:
+      go-version: '1.23'
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '22'
 
-      - name: Install Linux Wails dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+  - name: Install Linux dependencies
+    if: runner.os == 'Linux'
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y \
+        build-essential \
+        pkg-config \
+        libgtk-3-dev \
+        libwebkit2gtk-4.1-dev
 
-      - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+  - name: Install Wails
+    shell: bash
+    run: |
+      go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Build
-        run: wails build -clean
+  - name: Verify Wails
+    shell: bash
+    run: |
+      "$HOME/go/bin/wails" version
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: Hello-${{ runner.os }}
-          path: |
-            build/bin/**
+  - name: Install frontend dependencies
+    working-directory: frontend
+    run: npm install
+
+  - name: Build application
+    shell: bash
+    run: |
+      if [ "$RUNNER_OS" = "Linux" ]; then
+        "$HOME/go/bin/wails" build -clean -tags webkit2_41
+      else
+        "$HOME/go/bin/wails" build -clean
+      fi
+
+  - name: Upload build artifacts
+    uses: actions/upload-artifact@v4
+    with:
+      name: Hello-${{ runner.os }}
+      path: build/bin/**
+      if-no-files-found: error
+```
